@@ -79,11 +79,13 @@ async def test_disabled_persona_command_is_not_executed():
 async def test_hook_keeps_persona_and_user_text_and_isolates_toolset():
  b,c,e=harness();tools=ToolSet(tools=[FunctionTool(name=x,description=x,parameters={'type':'object','properties':{}}) for x in ['bridge_join_listening','cmd_join']]);req=ProviderRequest(prompt=e.message_str,system_prompt='original persona',func_tool=tools)
  converter=NS(tools={'astrbot_plugin_nomi_music:一起听':NS(name='cmd_join')})
+ e.set_extra('_intent_bridge_route',{'mode':'auto','kind':'normal','calls':[{'name':'bridge_join_listening','arguments':{}}]})
+ e.set_extra('_intent_bridge_offered',['bridge_join_listening','cmd_join'])
  with patch.object(b,'join',new=AsyncMock(return_value={'status':'ok','output':'已进入房间'})),patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=converter)):
   await b.on_request(e,req);await b.on_request(e,req)
  assert req.system_prompt=='original persona' and req.prompt==e.message_str
- assert len(req.extra_user_content_parts)==3  # Two guides on re-entry, just one execution result.
- assert len(tools.tools)==2 and len(req.func_tool.tools)==1
+ assert len(req.extra_user_content_parts)==2  # One directory and one execution receipt.
+ assert len(tools.tools)==2 and len(req.func_tool.tools)==0
  c.llm_generate.assert_not_awaited()
 
 @pytest.mark.asyncio
@@ -140,10 +142,151 @@ async def test_classifier_failure_does_not_fabricate_completed_research():
  b,c,e=harness();e.message_str='lol更新的新版海斗好玩吗';c.llm_generate.return_value=NS(completion_text='not json')
  req=ProviderRequest(prompt=e.message_str,func_tool=ToolSet(tools=[FunctionTool(name='bridge_research',description='x',parameters={'type':'object','properties':{}})]))
  with patch.object(b,'lookup',new=AsyncMock()) as lookup:
-  await b.on_request(e,req);lookup.assert_not_awaited()
- assert '不能声称已经完成' in req.extra_user_content_parts[-1].text
+  await b.route_speech(e,req);await b.on_request(e,req);lookup.assert_not_awaited()
+ assert not e.get_extra('_intent_bridge_route')
+ assert '不谎称已完成' in req.extra_user_content_parts[-1].text
 
 @pytest.mark.asyncio
 async def test_quoted_or_negated_tool_call_still_denied():
  b,c,e=harness();e.message_str='不要一起听歌';assert (await b.join(e))['status']=='denied'
  e.message_str='不用联网查';assert (await b.lookup(e,'英雄联盟 海斗'))['status']=='denied'
+
+
+@pytest.mark.asyncio
+async def test_speech_guide_uses_active_providers_without_extra_classifier_or_send():
+ b,c,e=harness();e.message_str='冷月，想听你的声音'
+ c.get_config.return_value={'plugin_set':['*'],'provider_stt_settings':{'enable':True},'provider_tts_settings':{'enable':False}}
+ c.get_using_stt_provider_async=AsyncMock(return_value=object())
+ c.get_using_tts_provider_async=AsyncMock(return_value=object())
+ companion=NS(enabled=True,_tts_setting=lambda k,d:True if k=='enable_tts_enhancement' else d)
+ req=ProviderRequest(prompt=e.message_str,system_prompt='original persona')
+ with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=companion)):
+  await b.on_request(e,req);await b.on_request(e,req)
+ assert len(req.extra_user_content_parts)==1
+ assert '本轮可用能力目录' in req.extra_user_content_parts[0].text
+ assert req.system_prompt=='original persona' and req.prompt==e.message_str
+ c.llm_generate.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_missing_providers_never_claim_speech_is_available():
+ b,c,e=harness()
+ c.get_config.return_value={'provider_stt_settings':{'enable':True},'provider_tts_settings':{'enable':True}}
+ c.get_using_stt_provider_async=AsyncMock(return_value=None)
+ c.get_using_tts_provider_async=AsyncMock(return_value=None)
+ assert await b.speech_status(e)=={'speech_to_text':False,'voice_reply':False,'reply_owner':'none'}
+
+
+@pytest.mark.asyncio
+async def test_companion_language_provider_works_with_native_tts_disabled():
+ b,c,e=harness();c.get_using_tts_provider_async=AsyncMock(return_value=None)
+ companion=NS(enabled=True,_tts_setting=lambda k,d:True,_resolve_tts_synthesis_provider=Mock(return_value=object()))
+ with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=companion)):
+  assert (await b.speech_status(e))['reply_owner']=='private_companion'
+ companion._resolve_tts_synthesis_provider.assert_called_once_with(e,None)
+
+
+@pytest.mark.asyncio
+async def test_disabled_companion_does_not_enable_tts_when_native_tts_is_off():
+ b,c,e=harness();c.get_using_tts_provider_async=AsyncMock(return_value=object())
+ with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=None)):
+  assert not (await b.speech_status(e))['voice_reply']
+
+
+@pytest.mark.asyncio
+async def test_native_tts_guide_does_not_request_companion_tags():
+ b,c,e=harness();e.message_str='你好'
+ c.get_config.return_value={'provider_tts_settings':{'enable':True}}
+ c.get_using_tts_provider_async=AsyncMock(return_value=object())
+ with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=None)):
+  req=ProviderRequest(prompt=e.message_str);await b.on_request(e,req)
+ assert '不手写语音标签' in req.extra_user_content_parts[0].text
+
+
+@pytest.mark.asyncio
+async def test_speech_metadata_obeys_session_scope():
+ b,c,e=harness();c.get_using_tts_provider_async=AsyncMock(return_value=object())
+ other=event('发条语音',uid='99999');req=ProviderRequest(prompt=other.message_str)
+ await b.on_request(other,req)
+ assert not req.extra_user_content_parts
+ c.get_using_tts_provider_async.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_transcribed_music_request_reuses_existing_router():
+ b,c,e=harness()
+ # AstrBot preprocessing replaces Record with Plain and appends the transcript.
+ e.message_str='想一起听会歌';e.message_obj.message_str=e.message_str
+ e.message_obj.message=[Plain(e.message_str)]
+ e.set_extra('_intent_bridge_route',{'mode':'auto','kind':'normal','calls':[{'name':'bridge_join_listening','arguments':{}}]})
+ e.set_extra('_intent_bridge_offered',['bridge_join_listening'])
+ req=ProviderRequest(prompt=e.message_str,func_tool=ToolSet(tools=[FunctionTool(name='bridge_join_listening',description='x',parameters={'type':'object','properties':{}})]))
+ with patch.object(b,'join',new=AsyncMock(return_value={'status':'ok'})) as join,patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=None)):
+  await b.on_request(e,req)
+ join.assert_awaited_once_with(e)
+ assert req.prompt=='想一起听会歌'
+
+
+@pytest.mark.asyncio
+async def test_failed_stt_record_does_not_trigger_an_action():
+ from astrbot.api.message_components import Record
+ b,c,e=harness();e.message_str='';e.message_obj.message_str='';e.message_obj.message=[Record(file='/missing.wav')]
+ req=ProviderRequest(prompt='',func_tool=ToolSet(tools=[FunctionTool(name='bridge_join_listening',description='x',parameters={'type':'object','properties':{}})]))
+ with patch.object(b,'join',new=AsyncMock()) as join:
+  await b.on_request(e,req)
+ join.assert_not_awaited();c.llm_generate.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('transcript',['想一起听会歌','不要一起听歌','用语音回复我'])
+async def test_real_astrbot_stt_preprocess_feeds_original_intent_event(transcript):
+ from astrbot.api.message_components import Record
+ from astrbot.core.pipeline.preprocess_stage.stage import PreProcessStage
+ b,c,e=harness();e.message_str='';e.message_obj.message_str=''
+ e.message_obj.message=[Record(file='/tmp/intent-test.wav')]
+ stt=NS(get_text=AsyncMock(return_value=transcript))
+ c.get_using_stt_provider_async=AsyncMock(return_value=stt)
+ stage=PreProcessStage();stage.config={};stage.platform_settings={}
+ stage.stt_settings={'enable':True};stage.plugin_manager=NS(context=c)
+ with patch.object(Record,'convert_to_file_path',new=AsyncMock(return_value='/tmp/intent-test.wav')),patch('astrbot.core.pipeline.preprocess_stage.stage.ensure_wav',new=AsyncMock(return_value='/tmp/intent-test.wav')):
+  await stage.process(e)
+ assert e.message_str==transcript and isinstance(e.get_messages()[0],Plain)
+ stt.get_text.assert_awaited_once()
+ e.set_extra('_intent_bridge_route',{'mode':'auto','kind':'normal','calls':[{'name':'bridge_join_listening','arguments':{}}] if transcript=='想一起听会歌' else []})
+ e.set_extra('_intent_bridge_offered',['bridge_join_listening'])
+ req=ProviderRequest(prompt=e.message_str,func_tool=ToolSet(tools=[FunctionTool(name='bridge_join_listening',description='x',parameters={'type':'object','properties':{}})]))
+ with patch.object(b,'join',new=AsyncMock(return_value={'status':'ok'})) as join,patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=None)):
+  await b.on_request(e,req)
+ assert join.await_count==(1 if transcript=='想一起听会歌' else 0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('text,mode,kind',[
+ ('想听你说话','voice','speak'),('你能哼两句吗','voice','sing'),
+ ('亲口说喜欢我','voice','speak'),('现在开会不方便听','text','normal'),
+ ('你说呢','auto','normal')])
+async def test_semantic_voice_once_and_keeps_user_words(text,mode,kind):
+ b,c,e=harness();e.message_str=text
+ b.speech_status=AsyncMock(return_value={'voice_reply':True})
+ c.llm_generate.return_value=NS(completion_text=json.dumps({'mode':mode,'kind':kind}))
+ req=ProviderRequest(prompt=text,system_prompt='persona',contexts=[{'role':'user','content':'前文'}])
+ await b.route_speech(e,req);await b.route_speech(e,req)
+ c.llm_generate.assert_awaited_once()
+ assert getattr(e,'_intent_bridge_voice_decision')==mode
+ assert req.prompt==text and req.system_prompt=='persona'
+ assert '前文' in c.llm_generate.call_args.kwargs['prompt']
+ if kind=='sing':assert '不能保证旋律' in req.extra_user_content_parts[0].text
+
+@pytest.mark.asyncio
+async def test_semantic_voice_no_provider_or_other_session_no_call():
+ b,c,e=harness();b.speech_status=AsyncMock(return_value={'voice_reply':False})
+ await b.route_speech(e,ProviderRequest());await b.route_speech(event(uid='99999'),ProviderRequest())
+ c.llm_generate.assert_not_awaited()
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('raw',['not json','{"mode":"shell"}','[]'])
+async def test_semantic_classifier_failure_preserves_legacy_policy(raw):
+ b,c,e=harness();b.speech_status=AsyncMock(return_value={'voice_reply':True})
+ c.llm_generate.return_value=NS(completion_text=raw)
+ await b.route_speech(e,ProviderRequest())
+ assert not hasattr(e,'_intent_bridge_voice_decision')
