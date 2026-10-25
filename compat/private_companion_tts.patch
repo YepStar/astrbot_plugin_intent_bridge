@@ -1,0 +1,52 @@
+--- a/tts_enhancement.py
++++ b/tts_enhancement.py
+@@ -1888,6 +1888,11 @@
+         return max(0.0, min(1.0, override_value if override_value >= 0 else probability))
+ 
+     def _tts_session_interval_remaining(self, event: Any) -> float:
++        # An explicit semantic request should not be silently discarded by the
++        # automatic-chat cooldown. Strong policy still takes precedence.
++        if (getattr(event, "_intent_bridge_voice_decision", "") == "voice"
++                and not self._tts_strong_constraint_enabled()):
++            return 0.0
+         if self._tts_setting("tts_frequency_control_mode", "global") == "legacy":
+             return 0.0
+         session = self._tts_session_key(event)
+@@ -1923,6 +1928,8 @@
+             pass
+ 
+     def _tts_hard_block_reason(self, event: Any) -> str:
++        if getattr(event, "_intent_bridge_voice_decision", "") == "text":
++            return "semantic_text_preference"
+         return _single_line(getattr(event, "_private_companion_tts_hard_block_reason", ""), 120)
+ 
+     def _tts_strong_constraint_block_reason(
+@@ -2014,6 +2021,10 @@
+         return ""
+ 
+     def _event_tts_request_signal(self, event: Any) -> tuple[str, str, str]:
++        decision = getattr(event, "_intent_bridge_voice_decision", "")
++        if decision in {"voice", "text"}:
++            raw = str(getattr(event, "message_str", "") or "").strip()
++            return ("positive" if decision == "voice" else "negative"), "semantic_intent", raw
+         raw_text = str(getattr(event, "message_str", "") or "").strip()
+         if bool(getattr(event, "_private_companion_tts_forced_by_message_scope", False)):
+             return "positive", "configured_proactive_scope", raw_text
+@@ -2769,6 +2780,8 @@
+         )
+ 
+     async def apply_tts_enhancement_request(self, event: Any, req: Any) -> None:
++        if getattr(event, "_intent_bridge_voice_decision", "") == "text":
++            return
+         if bool(getattr(event, "_private_companion_tts_request_applied", False)):
+             return
+         feature_enabled = getattr(self, "_feature_enabled_or_temp_unlocked", None)
+@@ -4241,6 +4254,8 @@
+         )
+ 
+     async def _maybe_convert_plain_reply_to_tts(self, text: str, event: Any) -> list[Any]:
++        if getattr(event, "_intent_bridge_voice_decision", "") == "text":
++            return []
+         mode = self._tts_setting("tts_generation_mode", "fast_tag")
+         if self._tts_text_is_provider_safety_refusal(text):
+             logger.info(
