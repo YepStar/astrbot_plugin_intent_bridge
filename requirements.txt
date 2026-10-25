@@ -1,1 +1,2 @@
-# Uses the AstrBot runtime and existing installed plugin clients; no extra packages.
+# Schema validation used by routing.py; often already installed with AstrBot.
+jsonschema>=4.18,<5

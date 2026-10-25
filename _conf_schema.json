@@ -11,7 +11,7 @@
     "hint": "默认不在任何会话自动操作；填写 /sid 的完整 FriendMessage UMO。"
   },
   "enable_preflight": {
-    "description": "对明确听歌与实时查询意图自动预处理",
+    "description": "自动执行语义匹配的常用能力（关闭则交主Agent原生调用）",
     "type": "bool",
     "default": true
   },
@@ -39,5 +39,22 @@
     "description": "小黑盒账号 Profile ID",
     "type": "string",
     "default": "default"
+  },
+  "enable_speech_intent": {
+    "description": "用模型结合上下文判断本轮语音/文字偏好",
+    "type": "bool",
+    "default": true,
+    "hint": "每个有语音能力的已授权私聊回合最多分类一次；失败回退陪伴插件原规则。"
+  },
+  "extra_auto_tools": {
+    "description": "额外允许预执行的原生工具名",
+    "type": "list",
+    "default": [],
+    "hint": "新工具会自动进入目录并交主Agent调用；填写这里可加入预执行，无需改代码。必须仍在本轮工具白名单内。"
+  },
+  "dispatch_timeout_seconds": {
+    "description": "单模块执行超时秒数",
+    "type": "int",
+    "default": 180
   }
 }
