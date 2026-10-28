@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>自然意图控制台</title><link rel="stylesheet" href="style.css?v=0.4.0"></head>
+<body><div class="shell">
+<header><div><p class="eyebrow">INTENT BRIDGE / 0.3</p><h1>让插件听懂你的意思</h1><p class="subtitle">发现当前能力，选择接入方式，让自然语言落到真实动作。</p></div><button id="refresh" class="primary">↻ 刷新插件与能力</button></header>
+<div id="message" role="status" aria-live="polite">正在读取已加载插件…</div>
+<section class="metrics" aria-label="接入概览"><article><span>已加载插件</span><strong id="plugins-count">—</strong></article><article><span>可参与判断的工具</span><strong id="tools-count">—</strong></article><article><span>已接入的指令</span><strong id="commands-count">—</strong></article><article><span>最近刷新</span><strong class="small" id="updated">尚未刷新</strong></article></section>
+<main><section class="catalog card"><div class="section-head"><div><h2>插件与指令</h2><p>先选插件，再查看并接入它的指令。插件启停请到 AstrBot「系统 → 插件」。</p></div></div>
+<div class="filters"><input id="search" type="search" placeholder="搜索插件、中文用途或指令名称…" aria-label="搜索插件和指令"><select id="filter" aria-label="接入状态"><option value="all">全部指令</option><option value="on">已接入</option><option value="off">未接入 / 不可用</option></select></div>
+<div class="hierarchy"><nav class="plugin-pane" aria-label="已安装的父插件"><div class="pane-label">已安装插件 <span id="installed-count">—</span></div><div id="plugin-list" class="plugin-list"></div><p class="plugin-help">● 已启用　○ 未启用 / 未载入<br>这里只能选择查看，不能启停插件。</p></nav>
+<section class="child-pane" aria-label="所选插件的能力"><div id="plugin-heading" class="plugin-heading"></div>
+<nav class="tabs" aria-label="插件能力类型"><button data-tab="commands" aria-pressed="true">指令</button><button data-tab="tools" aria-pressed="false">原生工具</button><button data-tab="recent" aria-pressed="false">最近执行</button></nav>
+<p id="list-note" class="note"></p><div id="list" class="list"></div></section></div></section>
+<aside class="card settings"><div class="section-head"><div><p class="eyebrow">ROUTING SETTINGS</p><h2>本地路由设置</h2></div></div>
+<form id="settings"><label class="toggle"><span>启用意图路由<small>仅在下方授权私聊生效</small></span><input id="enabled" type="checkbox"></label>
+<label class="toggle"><span>预执行已匹配的常用动作<small>关闭后由主对话模型调用工具</small></span><input id="preflight" type="checkbox"></label>
+<label class="toggle"><span>允许明确收藏表情<small>支持本条、引用和最近 5 分钟图片</small></span><input id="meme-save" type="checkbox"></label>
+<label class="field">默认收藏分类<input id="meme-category" maxlength="48" placeholder="用户收藏" required></label>
+<label class="field">授权私聊 UMO<textarea id="umos" rows="3" placeholder="qq_bot:FriendMessage:用户ID"></textarea><small>每行一个；仍保留原插件的管理员与会话权限。</small></label>
+<label class="field">分类模型 Provider ID<input id="provider" placeholder="留空跟随会话模型"></label>
+<label class="field">分类等待上限（秒）<input id="timeout" type="number" min="3" max="60" required></label>
+<button class="primary full" type="submit">保存设置</button><p class="note">保存后立即用于后续消息。刷新不会自动执行指令，也不会启用已停用的插件。</p></form>
+<section class="example"><b>试试这样说</b><p>发来图片后说“把这个表情收藏起来”；也可以引用图片说“保存到开心分类”。</p><p>只有真实入库回执才算完成；图库的语义索引状态单独计算。</p></section></aside></main>
+<footer>自然意图与插件整合 · 能力来自当前加载的插件 · 管理面板沿用 AstrBot 登录验证</footer></div>
+<div id="confirm-backdrop" class="confirm-backdrop" hidden><section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
+<h2 id="confirm-title">确认接入指令</h2><p id="confirm-description"></p><div class="confirm-actions"><button id="confirm-cancel" class="action" type="button">取消</button><button id="confirm-accept" class="primary" type="button">确认接入</button></div>
+</section></div><script src="app.js?v=0.4.0-sort1" defer></script></body></html>

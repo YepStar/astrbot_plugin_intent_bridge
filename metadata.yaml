@@ -1,7 +1,7 @@
 name: astrbot_plugin_intent_bridge
 display_name: 自然意图与插件整合
-desc: 发现已加载插件能力，将自然语言听歌邀请与实时问题接入已有工具；补齐B站及小黑盒只读检索，沿用原人格回复。
-version: 0.2.0
+desc: 插件能力控制面板、指令接入及自然语言表情收藏；按真实工具、附件与权限执行，沿用原人格回复。
+version: 0.4.0
 author: YepStar
 repo: https://github.com/YepStar/astrbot_plugin_intent_bridge
 astrbot_version: ">=4.29.1,<5"

@@ -44,7 +44,7 @@
     "description": "用模型结合上下文判断本轮语音/文字偏好",
     "type": "bool",
     "default": true,
-    "hint": "每个有语音能力的已授权私聊回合最多分类一次；失败回退陪伴插件原规则。"
+    "hint": "正常每回合分类一次；仅明确纠错或格式无效时最多增加一次，共用分类超时。失败回退原流程。"
   },
   "extra_auto_tools": {
     "description": "额外允许预执行的原生工具名",
@@ -56,5 +56,20 @@
     "description": "单模块执行超时秒数",
     "type": "int",
     "default": 180
+  },
+  "enable_meme_save": {
+    "description": "允许自然语言明确收藏收到的表情图片",
+    "type": "bool",
+    "default": true
+  },
+  "meme_default_category": {
+    "description": "未指定分类时的表情收藏分类",
+    "type": "string",
+    "default": "用户收藏"
+  },
+  "disabled_tools": {
+    "description": "在意图路由中暂停的工具名（控制面板管理）",
+    "type": "list",
+    "default": []
   }
 }
