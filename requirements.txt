@@ -1,2 +1,5 @@
 # Schema validation used by routing.py; often already installed with AstrBot.
 jsonschema>=4.18,<5
+
+# Chinese command names retain the existing cmd_* identifiers.
+pypinyin>=0.55,<1

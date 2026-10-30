@@ -30,7 +30,7 @@ def test_cache_scope_expiration_and_reply(tmp_path):
 def manager_modules(tmp_path,monkeypatch):
  import astrbot.core.utils.astrbot_path as paths
  monkeypatch.setattr(paths,'get_astrbot_plugin_data_path',lambda:str(tmp_path/'data'))
- package=types.ModuleType('meme_fixture');package.__path__=['/AstrBot/data/plugins/meme_manager']
+ package=types.ModuleType('meme_fixture');package.__path__=[__import__('os').environ.get('MEME_MANAGER_SOURCE','/AstrBot/data/plugins/meme_manager')]
  monkeypatch.setitem(sys.modules,'meme_fixture',package)
  for name in list(sys.modules):
   if name.startswith('meme_fixture.'):monkeypatch.delitem(sys.modules,name)

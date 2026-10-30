@@ -15,7 +15,8 @@ def panel():
  key='test_plugin:查看状态';handler=NS(handler_module_path='fixture.main',desc='只读状态')
  converter=NS(catalog=Mock(return_value={key:[(handler,NS())]}),refresh=AsyncMock(),tools={},unsupported={},allowed=set(),config=Config(allowed_commands=[]),_allowlist_lock=asyncio.Lock())
  converter.is_allowed=lambda k:k in converter.allowed
- c.get_all_stars.return_value=[NS(name='astrbot_plugin_command_tools',activated=True,version='1',star_cls=converter)]
+ c.get_all_stars.return_value=[]
+ b.command_service=converter
  c.get_llm_tool_manager.return_value=NS(func_list=[NS(name='weather',description='天气',active=True,handler_module_path=None)])
  control=ControlPanel(b);app=Quart(__name__)
  for path in ['status','refresh','commands','settings','tools']:

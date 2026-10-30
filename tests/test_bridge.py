@@ -56,7 +56,7 @@ async def test_scope_denies_other_user_without_lookup():
 async def test_join_uses_original_sdk_identity_once_and_caches_result():
  b,c,e=harness();tool=NS(active=True,name='cmd_join',call=AsyncMock(return_value=json.dumps({'status':'ok','output':'已进入测试房间'})))
  converter=NS(tools={'astrbot_plugin_nomi_music:一起听':tool})
- with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=converter)):
+ with patch.object(b,'command_service',converter):
   a=await b.join(e);d=await b.join(e)
  assert a==d and tool.call.await_count==1
  assert tool.call.call_args.args[0].context.event is e
@@ -65,14 +65,14 @@ async def test_join_uses_original_sdk_identity_once_and_caches_result():
 @pytest.mark.asyncio
 async def test_join_unknown_result_not_retried():
  b,c,e=harness();tool=NS(active=True,name='cmd_join',call=AsyncMock(side_effect=TimeoutError()))
- with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=NS(tools={'astrbot_plugin_nomi_music:一起听':tool}))):
+ with patch.object(b,'command_service',NS(tools={'astrbot_plugin_nomi_music:一起听':tool})):
   assert (await b.join(e))['status']=='unknown';await b.join(e)
  tool.call.assert_awaited_once()
 
 @pytest.mark.asyncio
 async def test_disabled_persona_command_is_not_executed():
  b,c,e=harness();e.set_extra('_intent_bridge_available_tools',['bridge_join_listening']);tool=NS(active=True,name='cmd_join',call=AsyncMock())
- with patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=NS(tools={'astrbot_plugin_nomi_music:一起听':tool}))):assert (await b.join(e))['status']=='denied'
+ with patch.object(b,'command_service',NS(tools={'astrbot_plugin_nomi_music:一起听':tool})):assert (await b.join(e))['status']=='denied'
  tool.call.assert_not_awaited()
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_hook_keeps_persona_and_user_text_and_isolates_toolset():
  converter=NS(tools={'astrbot_plugin_nomi_music:一起听':NS(name='cmd_join')})
  e.set_extra('_intent_bridge_route',{'mode':'auto','kind':'normal','calls':[{'name':'bridge_join_listening','arguments':{}}]})
  e.set_extra('_intent_bridge_offered',['bridge_join_listening','cmd_join'])
- with patch.object(b,'join',new=AsyncMock(return_value={'status':'ok','output':'已进入房间'})),patch('bridge_test_pkg.main.plugin_for',new=AsyncMock(return_value=converter)):
+ with patch.object(b,'join',new=AsyncMock(return_value={'status':'ok','output':'已进入房间'})),patch.object(b,'command_service',converter):
   await b.on_request(e,req);await b.on_request(e,req)
  assert req.system_prompt=='original persona' and req.prompt==e.message_str
  assert len(req.extra_user_content_parts)==2  # One directory and one execution receipt.
@@ -154,7 +154,7 @@ async def test_quoted_or_negated_tool_call_still_denied():
 
 @pytest.mark.asyncio
 async def test_speech_guide_uses_active_providers_without_extra_classifier_or_send():
- b,c,e=harness();e.message_str='冷月，想听你的声音'
+ b,c,e=harness();e.message_str='我想听你的声音'
  c.get_config.return_value={'plugin_set':['*'],'provider_stt_settings':{'enable':True},'provider_tts_settings':{'enable':False}}
  c.get_using_stt_provider_async=AsyncMock(return_value=object())
  c.get_using_tts_provider_async=AsyncMock(return_value=object())

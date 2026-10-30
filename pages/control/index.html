@@ -11,11 +11,11 @@
 <nav class="tabs" aria-label="插件能力类型"><button data-tab="commands" aria-pressed="true">指令</button><button data-tab="tools" aria-pressed="false">原生工具</button><button data-tab="recent" aria-pressed="false">最近执行</button></nav>
 <p id="list-note" class="note"></p><div id="list" class="list"></div></section></div></section>
 <aside class="card settings"><div class="section-head"><div><p class="eyebrow">ROUTING SETTINGS</p><h2>本地路由设置</h2></div></div>
-<form id="settings"><label class="toggle"><span>启用意图路由<small>仅在下方授权私聊生效</small></span><input id="enabled" type="checkbox"></label>
+<form id="settings"><label class="toggle"><span>启用意图路由<small>仅在下方授权会话生效</small></span><input id="enabled" type="checkbox"></label>
 <label class="toggle"><span>预执行已匹配的常用动作<small>关闭后由主对话模型调用工具</small></span><input id="preflight" type="checkbox"></label>
 <label class="toggle"><span>允许明确收藏表情<small>支持本条、引用和最近 5 分钟图片</small></span><input id="meme-save" type="checkbox"></label>
 <label class="field">默认收藏分类<input id="meme-category" maxlength="48" placeholder="用户收藏" required></label>
-<label class="field">授权私聊 UMO<textarea id="umos" rows="3" placeholder="qq_bot:FriendMessage:用户ID"></textarea><small>每行一个；仍保留原插件的管理员与会话权限。</small></label>
+<label class="field">授权会话 UMO<textarea id="umos" rows="3" placeholder="平台ID:FriendMessage:用户ID 或 平台ID:GroupMessage:群ID"></textarea><small>每行一个；仍保留原插件的管理员与会话权限。</small></label>
 <label class="field">分类模型 Provider ID<input id="provider" placeholder="留空跟随会话模型"></label>
 <label class="field">分类等待上限（秒）<input id="timeout" type="number" min="3" max="60" required></label>
 <button class="primary full" type="submit">保存设置</button><p class="note">保存后立即用于后续消息。刷新不会自动执行指令，也不会启用已停用的插件。</p></form>

@@ -21,10 +21,7 @@ class ControlPanel:
         self.inventory_root = None
 
     def converter(self):
-        for s in self.bridge.context.get_all_stars():
-            if s.activated and s.name == 'astrbot_plugin_command_tools':
-                return s.star_cls
-        return None
+        return self.bridge.command_service
 
     async def snapshot(self, refresh=False):
         b = self.bridge
@@ -43,12 +40,12 @@ class ControlPanel:
                 handler, filt = entries[0]
                 star = star_map.get(handler.handler_module_path)
                 tool = converter.tools.get(key) if converter else None
-                reason = converter.unsupported.get(key, '') if converter else '指令工具转换器未启用，暂时只能查看。'
+                reason = converter.unsupported.get(key, '') if converter else '内置指令接入不可用，暂时只能查看。'
                 supported = len(entries) == 1 and not reason
                 if len(entries) != 1:
                     reason = '同名指令存在冲突，不能接入。'
-                if key.startswith('astrbot_plugin_command_tools:'):
-                    supported, reason = False, '指令转换器自身的管理指令仅展示，请使用原始管理入口。'
+                if key in {'astrbot_plugin_intent_bridge:cmdtools'} or key.startswith('astrbot_plugin_command_tools:'):
+                    supported, reason = False, '指令接入自身的管理指令仅展示，请使用原始管理入口。'
                 if (getattr(handler, 'handler_module_path', '') == 'astrbot.builtin_stars.builtin_commands.main'
                         and getattr(handler, 'handler_name', '') in {'reset', 'stop', 'new_conv', 'update_dashboard'}):
                     supported, reason = False, '会话或程序生命周期指令暂不支持转换。'
@@ -115,8 +112,10 @@ class ControlPanel:
             if k in {'enabled','enable_preflight','enable_meme_save'} and type(v) is not bool:
                 return jsonify({'error':'开关值必须为布尔值'}),400
             if k=='allowed_umos' and (not isinstance(v,list) or len(v)>100 or any(
-                    not isinstance(x,str) or ':FriendMessage:' not in x or len(x)>200 for x in v)):
-                return jsonify({'error':'请填写完整私聊UMO，每行一个'}),400
+                    not isinstance(x,str) or len(x)>200 or len(x.split(':',2)) != 3
+                    or not x.split(':',2)[0] or x.split(':',2)[1] not in {'FriendMessage','GroupMessage'}
+                    or not x.split(':',2)[2].strip() for x in v)):
+                return jsonify({'error':'请填写完整会话UMO（私聊或群聊），每行一个'}),400
             if k=='router_timeout_seconds' and (type(v) is not int or not 3<=v<=60):
                 return jsonify({'error':'分类超时应为3—60秒'}),400
             if k in {'meme_default_category','router_provider_id'} and (not isinstance(v,str) or len(v)>100):
@@ -137,7 +136,7 @@ class ControlPanel:
         if not isinstance(body,dict) or set(body)!={'key','enabled'} or type(body['enabled']) is not bool:
             return jsonify({'error':'参数无效'}),400
         converter=self.converter()
-        if converter is None:return jsonify({'error':'指令转换器未启用'}),409
+        if converter is None:return jsonify({'error':'内置指令接入不可用'}),409
         key=body['key']
         if not isinstance(key,str) or key not in converter.catalog():
             return jsonify({'error':'指令已变化，请刷新'}),409

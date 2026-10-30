@@ -5,10 +5,10 @@
     "default": true
   },
   "allowed_umos": {
-    "description": "允许启用的私聊 UMO",
+    "description": "允许启用的会话 UMO",
     "type": "list",
     "default": [],
-    "hint": "默认不在任何会话自动操作；填写 /sid 的完整 FriendMessage UMO。"
+    "hint": "默认不在任何会话自动路由；填写 /sid 的完整 FriendMessage 或 GroupMessage UMO，每项一个。"
   },
   "enable_preflight": {
     "description": "自动执行语义匹配的常用能力（关闭则交主Agent原生调用）",
@@ -71,5 +71,20 @@
     "description": "在意图路由中暂停的工具名（控制面板管理）",
     "type": "list",
     "default": []
+  },
+  "allowed_commands": {
+    "description": "已授权接入的插件指令（统一面板管理）",
+    "type": "list",
+    "default": []
+  },
+  "command_timeout": {
+    "description": "指令执行超时秒数",
+    "type": "int",
+    "default": 30
+  },
+  "command_migration_done": {
+    "description": "旧指令授权已迁移（自动管理）",
+    "type": "bool",
+    "default": false
   }
 }

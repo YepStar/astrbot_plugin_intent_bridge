@@ -27,13 +27,13 @@ def test_reject_unknown_or_invalid_tool_calls(calls):
 @pytest.mark.asyncio
 async def test_photo_routes_then_dispatches_once_with_receipt_and_no_retry():
  b,c,e=harness();e.message_str='你在做什么，拍给我看看';b.speech_status=AsyncMock(return_value={'voice_reply':True,'speech_to_text':True,'reply_owner':'private_companion'})
- req=ProviderRequest(prompt=e.message_str,system_prompt='冷月',func_tool=ToolSet(tools=[tool()]))
- c.llm_generate.return_value=NS(completion_text=response([{'name':'pc_generate_photo','arguments':{'prompt':'冷月的日常场景肖像','kind':'selfie'}}]))
+ req=ProviderRequest(prompt=e.message_str,system_prompt='示例角色',func_tool=ToolSet(tools=[tool()]))
+ c.llm_generate.return_value=NS(completion_text=response([{'name':'pc_generate_photo','arguments':{'prompt':'示例角色的日常场景肖像','kind':'selfie'}}]))
  b.execute_native=AsyncMock(return_value={'status':'failed','sent':False,'error_code':'quota'})
  await b.route_speech(e,req);await b.on_request(e,req);await b.on_request(e,req)
  b.execute_native.assert_awaited_once();c.llm_generate.assert_awaited_once()
  assert b.execute_native.call_args.args[2]['caption']==''
- assert req.prompt==e.message_str and req.system_prompt=='冷月'
+ assert req.prompt==e.message_str and req.system_prompt=='示例角色'
  assert req.func_tool.get_tool('pc_generate_photo') is None
  assert '"sent": false' in req.extra_user_content_parts[-1].text
 
