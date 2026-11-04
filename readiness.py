@@ -27,3 +27,30 @@ async def tool_ready(plugin,name):
         available=getattr(plugin,'_photo_generation_runtime_available',None)
         if callable(available) and not available():return False,'image_extension_unavailable'
     return True,''
+
+async def module_contexts(context, event, tools):
+    """Read optional session-scoped module state without executing module actions."""
+    import inspect
+    import json
+    from astrbot.core.star.star import star_map
+    from .catalog import plugin_for
+    result = {}
+    seen = set()
+    for tool in tools:
+        star = star_map.get(getattr(tool, 'handler_module_path', None))
+        if not star or star.name in seen:
+            continue
+        seen.add(star.name)
+        plugin = await plugin_for(context, event, star.name)
+        getter = getattr(plugin, 'intent_bridge_context', None)
+        if not callable(getter):
+            continue
+        try:
+            value = getter(event)
+            if inspect.isawaitable(value):
+                value = await value
+            if isinstance(value, dict) and len(json.dumps(value, ensure_ascii=False)) <= 8000:
+                result[star.name] = value
+        except Exception:
+            continue
+    return result

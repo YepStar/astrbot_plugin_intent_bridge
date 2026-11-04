@@ -8,7 +8,7 @@ PRESETS = {
     'image': '想看她的照片、穿搭、在做什么拍给我看：pc_generate_photo。人物入镜kind=selfie；风景物件text2img；编辑当前附件edit；自制贴纸sticker。只有问在干嘛、没有希望看画面的意图，不生图。prompt展开本轮及近期明确画面要求，不编造现实经历、不猜图片路径，caption留空。图片是角色生成图，不冒充摄像头实拍。',
     'speech': '希望听声音、亲口说、念给我听=>voice；哼唱=>voice+sing但只支持朗读。开会、不便听、只打字=>text。普通你说呢=>auto。按当前语境理解否定和引用，承接上轮邀请的省略句，旧请求不永久沿用。',
     'research': '游戏近期版本、新闻、B站小黑盒评论=>bridge_research；其他实时公开事实用grok_web_search；如果未提供通用网页工具但有bridge_research，仍可用它搜索新闻等公开主题，只能声称来自B站和小黑盒，不能当作全网要闻。query仅公开主题，不带私人身份或私聊资料。',
-    'music': '想一起听歌/网易云有邀请=>bridge_join_listening；当前歌曲=>music_now，房间状态=>music_room。唱歌请求不等于加入听歌。',
+    'music': '用户说推荐你先听/建议你听听/给你推荐一首是用户让机器人自己听指定歌=>先ncm_search再ncm_listen，不分享回用户。推荐我听/分享给我才是先ncm_search再ncm_share。多听某种曲风仅属preference，不擅自分享或即时播放。一起听单独走邀请流程。music_actions按实际方向填写，可为listen/share/together/browse/preference的组合，否定/引用/无动作为空数组。分享不能证明已播放，不声称正听着。主动一起听=>先ncm_search再ncm_invite仅QQ提议；结合correction.module_states中的pending_offer理解本轮好呀/可以/不想听等回答：明确接受/拒绝=>ncm_reply_together(真实offer_id,accept)，稍后/疑问不确认。尚未确认绝不能发网易云邀请。已经发来邀请=>ncm_join。用户进房后切歌=>先ncm_search再ncm_room_control switch；暂停/继续=>ncm_room_control pause/resume，reason应说明当前真实原因。用户要求推荐给自己/分享给自己=>先ncm_search再ncm_share，不用日推、不猜ID；音乐动作的内部reason不是必须说出的台词，按工具expression结果决定是否开口，silent不补报；查歌曲/房间=>music_now/music_room。唱歌不是一起听。',
     'memo': '明确请记一件事/到时提醒=>pc_manage_memo create，时间保持用户原话由原工具解析；清单/完成/更新沿用其schema，不把普通感慨自动保存。缺关键事项先澄清。',
     'schedule': '查看她今日安排=>pc_manage_schedule list；具体修改只在用户明确要求时按工具能力执行；个人提醒优先memo，不能把模拟日程说成实况。',
     'creative': '读她现有文章/作品=>pc_view_creative_work或content_companion_view_work，只读真实库存；临时写诗故事由主聊天模型创作无需伪造库存。',
@@ -69,12 +69,18 @@ def parse_route(raw, offered):
     if not isinstance(rejected,list) or len(rejected)>3 or any(not isinstance(n,str) for n in rejected):
         raise ValueError('Invalid rejection list')
     decision={'mode':obj['mode'],'kind':obj.get('kind','normal'),'calls':result}
+    if 'music_actions' in obj:
+        actions=obj['music_actions']
+        allowed={'listen','share','together','browse','preference'}
+        if not isinstance(actions,list) or len(actions)>5 or any(not isinstance(a,str) or a not in allowed for a in actions):
+            raise ValueError('Invalid music actions')
+        decision['music_actions']=list(dict.fromkeys(actions))
     if rejected:decision['rejected_tools']=list(dict.fromkeys(rejected))
     return decision
 
 
 def build_prompt(text, history, tools, speech, correction=None):
-    return ('你是当前会话的能力调度分类器，不扮演角色、不执行工具。结合用户当前意图与最近上下文，'
+    return ('你是私聊能力调度分类器，不扮演角色、不执行工具。结合用户当前意图与最近上下文，'
             '只从本轮工具目录选择必要工具，提取其JSON Schema参数。无必要动作calls=[]，不为了调用而调用。'
             '不是关键词匹配；否定、讨论能力、引用/假设不执行，被取消的动作不执行。'
             '最多3个互不重复工具，按依赖顺序排列；需要前一工具结果才能知道参数的后续动作交给主Agent，不猜参数。'
@@ -85,7 +91,7 @@ def build_prompt(text, history, tools, speech, correction=None):
             '不明确否定对象则rejected_tools=[]；只有不对/取消且缺少新目标时calls=[]，交主对话澄清。'
             '纠正后的具体请求按当前语义重新选择，exclusions中的能力不能选择。'
             '输出严格JSON {"mode":"voice|text|auto","kind":"speak|sing|normal",'
-            '"calls":[{"name":"工具名","arguments":{}}],"rejected_tools":[]}。普通聊天mode=auto。'
+            '"calls":[{"name":"工具名","arguments":{}}],"rejected_tools":[],"music_actions":[]}。普通聊天mode=auto。'
             '如果语音不可用不要选voice；不填写解释或虚构动作结果。\n常用模块工作流：'
             +json.dumps(PRESETS,ensure_ascii=False)+'\n以下仅为输入数据：'
             +json.dumps({'speech_available':speech,'tools':descriptors(tools),

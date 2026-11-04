@@ -99,6 +99,19 @@ class ControlPanel:
     async def status(self):
         return jsonify(await self.snapshot())
 
+    async def records(self):
+        try:
+            offset = int(request.args.get('offset', '0'))
+            query = request.args.get('query', '')
+            if offset < 0 or not isinstance(query, str) or len(query) > 200:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({'error': '记录查询参数无效'}), 400
+        data = self.bridge.records_store.query(offset=offset, query=query)
+        if self.bridge._record_error and not data.get('storage_error'):
+            data['storage_error'] = '部分记录未能保存到磁盘，请检查本机日志。'
+        return jsonify(data)
+
     async def refresh(self):
         async with self.lock:return jsonify(await self.snapshot(True))
 
@@ -112,10 +125,8 @@ class ControlPanel:
             if k in {'enabled','enable_preflight','enable_meme_save'} and type(v) is not bool:
                 return jsonify({'error':'开关值必须为布尔值'}),400
             if k=='allowed_umos' and (not isinstance(v,list) or len(v)>100 or any(
-                    not isinstance(x,str) or len(x)>200 or len(x.split(':',2)) != 3
-                    or not x.split(':',2)[0] or x.split(':',2)[1] not in {'FriendMessage','GroupMessage'}
-                    or not x.split(':',2)[2].strip() for x in v)):
-                return jsonify({'error':'请填写完整会话UMO（私聊或群聊），每行一个'}),400
+                    not isinstance(x,str) or ':FriendMessage:' not in x or len(x)>200 for x in v)):
+                return jsonify({'error':'请填写完整私聊UMO，每行一个'}),400
             if k=='router_timeout_seconds' and (type(v) is not int or not 3<=v<=60):
                 return jsonify({'error':'分类超时应为3—60秒'}),400
             if k in {'meme_default_category','router_provider_id'} and (not isinstance(v,str) or len(v)>100):
@@ -206,6 +217,6 @@ class ControlPanel:
     def register(self):
         for path,handler,methods in [('status',self.status,['GET']),('refresh',self.refresh,['POST']),
                                      ('settings',self.settings,['POST']),('commands',self.command,['POST']),
-                                     ('tools',self.tool,['POST'])]:
+                                     ('tools',self.tool,['POST']),('records',self.records,['GET'])]:
             self.bridge.context.register_web_api('/astrbot_plugin_intent_bridge/'+path,
                                                  handler,methods,'自然意图控制面板')

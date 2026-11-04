@@ -154,7 +154,7 @@ async def test_quoted_or_negated_tool_call_still_denied():
 
 @pytest.mark.asyncio
 async def test_speech_guide_uses_active_providers_without_extra_classifier_or_send():
- b,c,e=harness();e.message_str='我想听你的声音'
+ b,c,e=harness();e.message_str='冷月，想听你的声音'
  c.get_config.return_value={'plugin_set':['*'],'provider_stt_settings':{'enable':True},'provider_tts_settings':{'enable':False}}
  c.get_using_stt_provider_async=AsyncMock(return_value=object())
  c.get_using_tts_provider_async=AsyncMock(return_value=object())

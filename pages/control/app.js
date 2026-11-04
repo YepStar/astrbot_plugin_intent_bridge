@@ -1,13 +1,14 @@
 (() => {
   'use strict';
-  let state = null, tab = 'commands', selected = '', busy = false, pendingKey = '';
+  let state = null, view = 'catalog', tab = 'commands', selected = '', busy = false, pendingKey = '';
+  let recordData={items:[],total:0,offset:0,limit:30}, recordLoading=false, recordError='', recordSeq=0, searchTimer;
   const $ = id => document.getElementById(id);
   const message = (text, error = false) => { $('message').textContent = text; $('message').className = error ? 'error' : ''; };
   const node = (tag, text = '', cls = '') => { const el = document.createElement(tag); el.textContent = text; if (cls) el.className = cls; return el; };
   const api = async (method, path, body) => {
     const sdk = window.AstrBotPluginPage;
     if (!sdk) throw Error('请从 AstrBot 插件页面打开控制台');
-    const out = method === 'GET' ? await sdk.apiGet(path) : await sdk.apiPost(path, body || {});
+    const out = method === 'GET' ? await sdk.apiGet(path, body || {}) : await sdk.apiPost(path, body || {});
     if (out?.error || out?.status === 'error') throw Error(out.error || out.message || '请求失败');
     return out;
   };
@@ -68,12 +69,55 @@
     if (!visible.length) list.append(node('p', '没有匹配的插件', 'empty'));
     return state.plugins.find(p => p.name === selected);
   }
+  const recordStatus={analyzing:'分析中',matched:'已匹配动作',chat:'普通对话',analysis_failed:'分析失败',analysis_incomplete:'分析未完成',no_tools:'无可用能力',interrupted:'已中断',running:'执行中',unknown:'结果未确认',returned:'工具有返回',no_receipt:'未收到回执',sent:'已发送',started:'已启动',completed:'已完成',failed:'失败',error:'失败',denied:'被拒绝',unavailable:'不可用',intent_mismatch:'动作意图不符',switch_deferred:'暂缓切歌',duplicate:'重复调用已拦截',accepted:'已接受',saved:'已保存',awaiting_confirmation:'等待用户回答'};
+  const dispatchStatus={preflight:'路由预执行',deferred_to_agent:'交由主对话调用',unavailable:'当前已不可用',validation_rejected:'参数校验未通过'};
+  const localTime=value=>new Date(value*1000).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});
+  function recordCall(call,label){
+    const item=node('li','', 'record-call'),top=node('div','', 'record-call-top');
+    top.append(node('b',call.title||call.name),node('code',call.command||call.name,'identifier'));
+    if(label)top.append(node('span',label,'tag'));item.append(top);
+    const args=call.arguments||{};
+    if(Object.keys(args).length){const detail=node('details','', 'record-arguments');detail.append(node('summary','调用参数'),node('pre',JSON.stringify(args,null,2)));item.append(detail);}
+    if(call.result?.reason)item.append(node('p',String(call.result.reason),'reason'));
+    return item;
+  }
+  function renderRecords(){
+    const list=$('records-list');list.replaceChildren();
+    $('records-note').textContent='“分析后应调用”是路由选择；“实际调用”包括主对话后续选择的工具。搜索后的依赖动作可能由主对话继续选择。记录不会作为回复发到聊天中。';
+    $('records-count').textContent=recordLoading?'正在读取…':recordData.total?'共 '+recordData.total+' 条 · '+(recordData.offset+1)+'—'+(recordData.offset+recordData.items.length):'暂无记录';
+    $('records-prev').disabled=recordLoading||recordData.offset===0;
+    $('records-next').disabled=recordLoading||recordData.offset+recordData.limit>=recordData.total;
+    $('records-refresh').disabled=recordLoading;
+    if(recordError||recordData.storage_error)list.append(node('p',recordError||recordData.storage_error,'record-error'));
+    if(!recordData.items.length){list.append(node('div',recordLoading?'正在读取调用记录…':'没有匹配记录。更新后发送的自然语言请求会记录在这里。','empty'));return;}
+    for(const record of recordData.items){
+      const card=node('article','', 'route-record'),head=node('div','', 'record-head');
+      head.append(node('span',localTime(record.at)),node('code','编号 '+record.id),node('span',recordStatus[record.status]||record.status,'tag'));
+      card.append(head,node('h4','用户原话'),node('p',record.user_text||'（无文本）','record-input'));
+      if(record.analysis_truncated)card.append(node('p','该消息较长，路由分类只使用前 1600 字。','note'));
+      card.append(node('h4','分析后应调用'));
+      if(record.planned.length){const planned=node('ol');for(const call of record.planned)planned.append(recordCall(call,dispatchStatus[record.dispatch?.[call.name]]||'已选中'));card.append(planned);}
+      else card.append(node('p',record.status==='analysis_failed'?'分析未成功：'+(record.error_type||'结果未确认'):record.status==='no_tools'?'当前会话没有可用的路由能力。':'未选择指令或工具。','record-empty'));
+      card.append(node('h4','实际调用'));
+      if(record.executions.length){const actual=node('ol');for(const call of record.executions){const label=(call.via==='preflight'?'路由预执行':'主对话调用')+' · '+(recordStatus[call.status]||call.status)+(call.duration_ms!=null?' · '+call.duration_ms+' ms':'');actual.append(recordCall(call,label));}card.append(actual);}
+      else card.append(node('p',record.finished_at?'本轮没有记录到工具实际调用。':'尚无工具调用回执。','record-empty'));
+      const detail=node('details','', 'record-metadata');detail.append(node('summary','定位信息'),node('pre',JSON.stringify({记录编号:record.id,消息ID:record.message_id,会话:record.session,分类模型:record.provider||'跟随当前会话',回复方式:record.mode,音乐动作:record.music_actions,不可用工具:record.unavailable,已排除工具:record.excluded,阶段记录:record.events},null,2)));card.append(detail);list.append(card);
+    }
+  }
+  async function loadRecords(offset=0){
+    const seq=++recordSeq;recordLoading=true;recordError='';render();
+    try{const data=await api('GET','records',{offset,query:$('records-search').value.trim()});if(seq!==recordSeq)return;recordData=data;}
+    catch(error){if(seq===recordSeq)recordError=error.message||'读取记录失败';}
+    finally{if(seq===recordSeq){recordLoading=false;render();}}
+  }
   function render() {
     if (!state) return;
     $('plugins-count').textContent = state.plugins.filter(p => p.active && p.name !== '__core__').length;
     $('tools-count').textContent = state.tools.filter(t => t.routed).length;
     $('commands-count').textContent = state.commands.filter(c => c.available).length;
     $('updated').textContent = state.refreshed_at ? new Date(state.refreshed_at * 1000).toLocaleString('zh-CN', { hour12: false }) : '等待刷新';
+    $('catalog-view').hidden=view!=='catalog';$('records-view').hidden=view!=='records';
+    if(view==='records'){renderRecords();return;}
     const q = $('search').value.trim().toLowerCase(), p = renderParents(q);
     const heading = $('plugin-heading'); heading.replaceChildren();
     if (p) {
@@ -81,8 +125,8 @@
       heading.append(title, node('code', p.name + (p.version ? ' · v' + p.version : ''), 'identifier'));
       if (!p.active) heading.append(node('p', '请到 AstrBot「系统 → 插件」启用并成功载入，再刷新这里。', 'inactive-hint'));
     } else heading.append(node('h3', '选择一个插件'));
-    $('filter').disabled = tab === 'recent';
-    const notes = { commands: '只改变指令的自然语言接入状态；原插件的启停、权限和交互要求仍然有效。', tools: '原生工具按会话和人格再次筛选；暂停只影响意图路由。已转换指令请在“指令”页管理。', recent: '全部插件最近的判断与执行状态；不保存聊天正文。纠错重匹配只由你的明确反馈触发。' };
+    $('filter').disabled = false;
+    const notes = { commands: '只改变指令的自然语言接入状态；原插件的启停、权限和交互要求仍然有效。', tools: '原生工具按会话和人格再次筛选；暂停只影响意图路由。已转换指令请在“指令”页管理。', recent: '按用户消息关联原话、结构化路由选择和实际调用状态。' };
     $('list-note').textContent = notes[tab];
     const filter = $('filter').value;
     let rows = tab === 'recent' ? [...state.recent].reverse() : p ? tab === 'commands' ? commandRows(p.name) : nativeRows(p.name) : [];
@@ -141,7 +185,16 @@
   for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => {
     tab = button.dataset.tab; for (const other of document.querySelectorAll('[data-tab]')) other.setAttribute('aria-pressed', String(other === button)); render();
   };
-  $('search').oninput = render; $('filter').onchange = render;
+  for(const button of document.querySelectorAll('[data-view]'))button.onclick=()=>{
+    view=button.dataset.view;
+    for(const other of document.querySelectorAll('[data-view]'))other.setAttribute('aria-pressed',String(other===button));
+    render();if(view==='records')loadRecords(0);
+  };
+  $('search').oninput=render;$('filter').onchange=render;
+  $('records-search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>loadRecords(0),250);};
+  $('records-refresh').onclick=()=>loadRecords(recordData.offset);
+  $('records-prev').onclick=()=>loadRecords(Math.max(0,recordData.offset-recordData.limit));
+  $('records-next').onclick=()=>loadRecords(recordData.offset+recordData.limit);
   $('settings').onsubmit = async e => {
     e.preventDefault(); if (busy) return; busy = true;
     const body = { enabled: $('enabled').checked, enable_preflight: $('preflight').checked, enable_meme_save: $('meme-save').checked, meme_default_category: $('meme-category').value.trim(), allowed_umos: $('umos').value.split('\n').map(v => v.trim()).filter(Boolean), router_provider_id: $('provider').value.trim(), router_timeout_seconds: Number($('timeout').value) };

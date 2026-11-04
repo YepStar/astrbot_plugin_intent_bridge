@@ -2,11 +2,12 @@
 import re
 
 PLUGIN_NAMES = {
+    'astrbot_plugin_netease_browser':'网易云适配器',
     'builtin_commands':'系统内置指令','astrbot':'系统基础功能',
     'astrbot_plugin_intent_bridge':'自然意图与插件整合',
     'meme_manager':'表情包管理器','astrbot_plugin_meme_manager':'表情包管理器',
     'astrbot_plugin_private_companion':'私聊陪伴','astrbot_plugin_command_tools':'指令工具转换器',
-    'astrbot_plugin_livingmemory':'长期记忆','astrbot_plugin_self_learning':'自学习与记忆',
+    'astrbot_plugin_livingmemory':'私聊长期记忆','astrbot_plugin_self_learning':'群聊自学习',
     'astrbot_plugin_nomi_music':'网易云一起听','astrbot_plugin_netease_music':'网易云点歌',
     'astrbot_plugin_bilibili_ai_bot':'B站互动与浏览','astrbot_plugin_xiaoheihe_adapter':'小黑盒接入',
     'astrbot_plugin_content_companion':'内容与创作','astrbot_plugin_image_companion':'图片生成扩展',
@@ -17,6 +18,11 @@ PLUGIN_NAMES = {
 
 # 中文名称用于展示。工具调用仍使用字典键中的原始英文标识。
 TOOL_NAMES = {
+    'ncm_search':'按想法搜索网易云歌曲','ncm_read':'浏览歌曲歌词与评论',
+    'ncm_share':'网易云站内分享歌曲','ncm_invite':'QQ提议一起听（等待确认）',
+    'ncm_reply_together':'确认或拒绝一起听提议','ncm_room_control':'切歌、暂停或继续一起听',
+    'ncm_join':'接受绑定用户的一起听邀请','ncm_comment':'网易云歌曲公开评论',
+    'ncm_listen':'机器人自己听指定歌曲',
     'bridge_capabilities':'发现插件能力','bridge_save_received_meme':'收藏收到的表情',
     'bridge_join_listening':'接受一起听邀请','bridge_research':'检索B站与小黑盒',
     'grok_web_search':'联网搜索公开信息','search_memes':'搜索已有表情',
@@ -35,7 +41,7 @@ TOOL_NAMES = {
     'pc_qzone_reply_my_comment':'回复自己空间的评论',
     'pc_reality_touch_reminder':'执行现实触及提醒','pc_reality_touch_action':'处理家居与健康请求',
     'pc_reality_touch_camera_snapshot':'读取已授权摄像头单帧',
-    'recall_long_term_memory':'检索长期记忆','enhance_memory_rag_read':'检索增强记忆',
+    'recall_long_term_memory':'回忆私聊长期记忆','enhance_memory_rag_read':'检索增强记忆',
     'enhance_memory_rag_write':'写入增强记忆','enhance_use_image':'使用历史图片',
     'enhance_get_ban_list_status':'查看增强模式禁用名单','enhance_ban_user':'临时禁用群成员',
     'enhance_unban_user':'解除群成员禁用','search_bilibili':'搜索B站内容',
@@ -51,7 +57,9 @@ TOOL_NAMES = {
 }
 
 TOOL_COMMENTS = {
-    'bridge_save_received_meme':'把用户明确要求收藏的真实图片保存到当前图库；支持本条、引用或同一会话同一发送者最近5分钟的图片，保留管理员权限，按真实入库回执确认成功。',
+    'ncm_listen':'用户推荐你先听、给你推荐某首歌时，让机器人单独播放；不发回分享，也不建房。',
+    'ncm_share':'仅向用户分享。推荐你听是用户给机器人推荐，应ncm_listen；推荐我听/发给我才调用分享。',
+    'bridge_save_received_meme':'把用户明确要求收藏的真实图片保存到当前图库；支持本条、引用或同一私聊最近5分钟的图片，保留管理员权限，按真实入库回执确认成功。',
     'bridge_capabilities':'查看本会话真实可用的插件、工具和指令，不会仅因发现功能就自动执行或授权。',
     'bridge_join_listening':'接受已经收到的网易云一起听邀请；没有邀请、用户否定或仅在举例时不加入。',
     'bridge_research':'只读检索B站与小黑盒的公开内容，返回真实正文、字幕或评论摘录，不发布评论。',
@@ -65,7 +73,7 @@ TOOL_COMMENTS = {
     'enhance_unban_user':'解除当前群指定用户的禁用状态；仍由原插件检查管理员权限。',
     'content_companion_view_work':'读取角色资料柜中实际存在的作品，不把临时生成的文章说成库存。',
     'future_task':'创建、查看或调整定时任务；具体支持的动作和确认流程以原工具参数为准。',
-    'recall_long_term_memory':'检索原插件向当前会话开放的真实记忆，帮助回忆聊过的事；没有记录时不编造。',
+    'recall_long_term_memory':'检索此前真实保存的私聊记忆，帮助回忆聊过的事；没有记录时不编造。',
     'astrbot_execute_shell':'在原工具许可的环境中执行终端命令，执行权限仍由原工具控制。',
     'astrbot_execute_python':'在原工具许可的环境中运行Python代码，执行权限仍由原工具控制。',
     'astrbot_file_read_tool':'按原工具提供的路径和权限读取文件，不因接入意图路由获得额外访问权限。',
@@ -73,7 +81,7 @@ TOOL_COMMENTS = {
 }
 
 COMMAND_COMMENTS = {
-    'help':'查看可用指令与帮助说明。','sid':'查看当前会话的完整UMO标识，可用于填写会话授权范围。',
+    'help':'查看可用指令与帮助说明。','sid':'查看当前会话的完整UMO标识，可用于填写私聊授权范围。',
     'new':'创建新的对话；会影响当前上下文，是否允许由原指令决定。',
     'reset':'重置当前对话上下文；这类生命周期指令可能不支持工具转换。',
     'stop':'停止当前进行中的响应或任务；以原指令实际支持范围为准。',

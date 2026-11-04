@@ -6,8 +6,10 @@ def isolated_router_state(tmp_path, monkeypatch):
     import bridge_test_pkg.translation as translation
     import bridge_test_pkg.corrections as corrections
     import bridge_test_pkg.control as control
+    import bridge_test_pkg.records as records
     from types import SimpleNamespace as NS
     monkeypatch.setattr(translation, 'state_directory', lambda: tmp_path / 'state')
+    monkeypatch.setattr(records, 'state_directory', lambda: tmp_path / 'state')
     monkeypatch.setattr(corrections, 'state_directory', lambda: tmp_path / 'state')
     monkeypatch.setattr(control, 'installed_plugins', lambda stars, root=None: __import__(
         'bridge_test_pkg.inventory', fromlist=['installed_plugins']).installed_plugins(stars, root or tmp_path / 'plugins'))
