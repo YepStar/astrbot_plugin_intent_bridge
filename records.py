@@ -158,10 +158,16 @@ class RouteRecords:
                     call["status"] = "unknown"
             self.patch(identity, finished_at=time.time())
 
-    def query(self, offset=0, limit=30, query=""):
+    def query(self, offset=0, limit=30, query="", category="all"):
+        if category not in {"all", "called", "uncalled"}:
+            raise ValueError("Invalid record category")
         query = query.strip().casefold()
+        counts = {"called": sum(bool(row.get("executions")) for row in self.rows),
+                  "uncalled": sum(not row.get("executions") for row in self.rows)}
         rows = sorted(self.rows, key=lambda row: row["at"], reverse=True)
+        if category != "all":
+            rows = [row for row in rows if bool(row.get("executions")) == (category == "called")]
         if query:
             rows = [row for row in rows if query in json.dumps(row, ensure_ascii=False).casefold()]
         offset = min(offset, max(0, (len(rows) - 1) // limit * limit)) if rows else 0
-        return {"items": rows[offset:offset + limit], "total": len(rows), "offset": offset, "limit": limit, "retention": self.limit, "storage_error": self.storage_error}
+        return {"items": rows[offset:offset + limit], "total": len(rows), "offset": offset, "limit": limit, "retention": self.limit, "storage_error": self.storage_error, "category": category, "counts": counts}

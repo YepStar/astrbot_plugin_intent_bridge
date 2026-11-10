@@ -155,3 +155,39 @@ async def test_failed_dispatch_records_unknown_once_without_retry():
     assert len(row['executions'])==1 and row['executions'][0]['status']=='unknown'
     assert row['executions'][0]['result']['error_type']=='TimeoutError'
     b.execute_native.assert_awaited_once()
+
+
+def test_called_layers_filter_before_paging_and_include_unsuccessful_calls(tmp_path):
+    records=RouteRecords(tmp_path)
+    for i in range(65):
+        identity=records.begin(event('分层记录'+str(i)))
+        records.patch(identity,status='matched',planned=[describe(tool())])
+        if i % 2:
+            call=records.start_call(identity,tool(),{},'main_agent')
+            if i % 3: records.end_call(identity,call,{'status':'failed'})
+    called=records.query(category='called')
+    idle=records.query(category='uncalled')
+    assert called['total']==32 and len(called['items'])==30
+    assert idle['total']==33 and len(idle['items'])==30
+    assert called['counts']=={'called':32,'uncalled':33}
+    assert all(row['executions'] for row in called['items'])
+    assert all(not row['executions'] for row in idle['items'])
+    assert len(records.query(category='called',offset=30)['items'])==2
+    assert records.query(category='called',query='分层记录64')['total']==0
+    assert records.query(category='uncalled',query='分层记录64')['total']==1
+    assert records.query()['total']==65
+    with pytest.raises(ValueError):records.query(category='bogus')
+
+@pytest.mark.asyncio
+async def test_records_api_validates_and_filters_layers_without_model_calls():
+    b,c,e,req=await classified()
+    app=Quart(__name__);app.add_url_rule('/records',view_func=b.control.records,methods=['GET'])
+    client=app.test_client()
+    c.llm_generate.reset_mock()
+    assert (await (await client.get('/records?category=called')).get_json())['total']==0
+    assert (await (await client.get('/records?category=uncalled')).get_json())['total']==1
+    b.records_store.start_call(e.get_extra('_intent_bridge_record_id'),tool(),{},'main_agent')
+    assert (await (await client.get('/records?category=called')).get_json())['total']==1
+    assert (await (await client.get('/records?category=uncalled')).get_json())['total']==0
+    assert (await client.get('/records?category=bogus')).status_code==400
+    c.llm_generate.assert_not_awaited()

@@ -4,7 +4,9 @@ import re
 PLUGIN_NAMES = {
     'astrbot_plugin_netease_browser':'网易云适配器',
     'builtin_commands':'系统内置指令','astrbot':'系统基础功能',
-    'astrbot_plugin_intent_bridge':'自然意图与插件整合',
+    'astrbot_plugin_intent_bridge':'自然意图适配器',
+    'astrbot_plugin_zlib_knowledge':'书籍管理适配器',
+    'astrbot_plugin_memory_branches':'记忆分支适配器',
     'meme_manager':'表情包管理器','astrbot_plugin_meme_manager':'表情包管理器',
     'astrbot_plugin_private_companion':'私聊陪伴','astrbot_plugin_command_tools':'指令工具转换器',
     'astrbot_plugin_livingmemory':'私聊长期记忆','astrbot_plugin_self_learning':'群聊自学习',

@@ -1,7 +1,9 @@
 (() => {
   'use strict';
   let state = null, view = 'catalog', tab = 'commands', selected = '', busy = false, pendingKey = '';
-  let recordData={items:[],total:0,offset:0,limit:30}, recordLoading=false, recordError='', recordSeq=0, searchTimer;
+  const recordPanels = Object.fromEntries([['records','called'],['idle-records','uncalled']].map(([id,category])=>[id,{
+    category, data:{items:[],total:0,offset:0,limit:30}, loading:false, error:'', seq:0, searchTimer:null
+  }]));
   const $ = id => document.getElementById(id);
   const message = (text, error = false) => { $('message').textContent = text; $('message').className = error ? 'error' : ''; };
   const node = (tag, text = '', cls = '') => { const el = document.createElement(tag); el.textContent = text; if (cls) el.className = cls; return el; };
@@ -81,16 +83,18 @@
     if(call.result?.reason)item.append(node('p',String(call.result.reason),'reason'));
     return item;
   }
-  function renderRecords(){
-    const list=$('records-list');list.replaceChildren();
-    $('records-note').textContent='“分析后应调用”是路由选择；“实际调用”包括主对话后续选择的工具。搜索后的依赖动作可能由主对话继续选择。记录不会作为回复发到聊天中。';
-    $('records-count').textContent=recordLoading?'正在读取…':recordData.total?'共 '+recordData.total+' 条 · '+(recordData.offset+1)+'—'+(recordData.offset+recordData.items.length):'暂无记录';
-    $('records-prev').disabled=recordLoading||recordData.offset===0;
-    $('records-next').disabled=recordLoading||recordData.offset+recordData.limit>=recordData.total;
-    $('records-refresh').disabled=recordLoading;
-    if(recordError||recordData.storage_error)list.append(node('p',recordError||recordData.storage_error,'record-error'));
-    if(!recordData.items.length){list.append(node('div',recordLoading?'正在读取调用记录…':'没有匹配记录。更新后发送的自然语言请求会记录在这里。','empty'));return;}
-    for(const record of recordData.items){
+  function renderRecords(prefix='records'){
+    const panel=recordPanels[prefix], field=id=>$(prefix+id.slice('records'.length));
+    const list=field('records-list');list.replaceChildren();
+    if(prefix==='records')$('records-open-idle').textContent='未调用记录'+(panel.data.counts?'（'+panel.data.counts.uncalled+'）':'');
+    field('records-note').textContent=(panel.category==='called'?'这里只显示已实际发起调用的记录，包含失败或未确认的调用。':'这里只显示尚未发起实际调用的记录，包含普通聊天、未执行计划及分析失败。')+'“分析后应调用”是路由选择；“实际调用”包括主对话后续选择的工具。搜索后的依赖动作可能由主对话继续选择。记录不会作为回复发到聊天中。';
+    field('records-count').textContent=panel.loading?'正在读取…':panel.data.total?'共 '+panel.data.total+' 条 · '+(panel.data.offset+1)+'—'+(panel.data.offset+panel.data.items.length):'暂无记录';
+    field('records-prev').disabled=panel.loading||panel.data.offset===0;
+    field('records-next').disabled=panel.loading||panel.data.offset+panel.data.limit>=panel.data.total;
+    field('records-refresh').disabled=panel.loading;
+    if(panel.error||panel.data.storage_error)list.append(node('p',panel.error||panel.data.storage_error,'record-error'));
+    if(!panel.data.items.length){list.append(node('div',panel.loading?'正在读取调用记录…':'没有匹配记录。更新后发送的自然语言请求会记录在这里。','empty'));return;}
+    for(const record of panel.data.items){
       const card=node('article','', 'route-record'),head=node('div','', 'record-head');
       head.append(node('span',localTime(record.at)),node('code','编号 '+record.id),node('span',recordStatus[record.status]||record.status,'tag'));
       card.append(head,node('h4','用户原话'),node('p',record.user_text||'（无文本）','record-input'));
@@ -104,11 +108,12 @@
       const detail=node('details','', 'record-metadata');detail.append(node('summary','定位信息'),node('pre',JSON.stringify({记录编号:record.id,消息ID:record.message_id,会话:record.session,分类模型:record.provider||'跟随当前会话',回复方式:record.mode,音乐动作:record.music_actions,不可用工具:record.unavailable,已排除工具:record.excluded,阶段记录:record.events},null,2)));card.append(detail);list.append(card);
     }
   }
-  async function loadRecords(offset=0){
-    const seq=++recordSeq;recordLoading=true;recordError='';render();
-    try{const data=await api('GET','records',{offset,query:$('records-search').value.trim()});if(seq!==recordSeq)return;recordData=data;}
-    catch(error){if(seq===recordSeq)recordError=error.message||'读取记录失败';}
-    finally{if(seq===recordSeq){recordLoading=false;render();}}
+  async function loadRecords(offset=0,prefix='records'){
+    const panel=recordPanels[prefix],seq=++panel.seq;
+    panel.loading=true;panel.error='';renderRecords(prefix);
+    try{const data=await api('GET','records',{offset,query:$(prefix+'-search').value.trim(),category:panel.category});if(seq!==panel.seq)return;panel.data=data;}
+    catch(error){if(seq===panel.seq)panel.error=error.message||'读取记录失败';}
+    finally{if(seq===panel.seq){panel.loading=false;renderRecords(prefix);}}
   }
   function render() {
     if (!state) return;
@@ -191,10 +196,21 @@
     render();if(view==='records')loadRecords(0);
   };
   $('search').oninput=render;$('filter').onchange=render;
-  $('records-search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>loadRecords(0),250);};
-  $('records-refresh').onclick=()=>loadRecords(recordData.offset);
-  $('records-prev').onclick=()=>loadRecords(Math.max(0,recordData.offset-recordData.limit));
-  $('records-next').onclick=()=>loadRecords(recordData.offset+recordData.limit);
+  for(const prefix of Object.keys(recordPanels)){
+    const panel=recordPanels[prefix];
+    $(prefix+'-search').oninput=()=>{clearTimeout(panel.searchTimer);panel.searchTimer=setTimeout(()=>loadRecords(0,prefix),250);};
+    $(prefix+'-refresh').onclick=()=>loadRecords(panel.data.offset,prefix);
+    $(prefix+'-prev').onclick=()=>loadRecords(Math.max(0,panel.data.offset-panel.data.limit),prefix);
+    $(prefix+'-next').onclick=()=>loadRecords(panel.data.offset+panel.data.limit,prefix);
+  }
+  const idleDialog=$('idle-records-dialog');
+  $('records-open-idle').onclick=()=>{idleDialog.showModal();loadRecords(recordPanels['idle-records'].data.offset,'idle-records');};
+  $('idle-records-close').onclick=()=>idleDialog.close();
+  idleDialog.addEventListener('click',e=>{if(e.target===idleDialog)idleDialog.close();});
+  idleDialog.addEventListener('close',()=>{
+    const panel=recordPanels['idle-records'];clearTimeout(panel.searchTimer);panel.seq++;panel.loading=false;
+    $('records-open-idle').focus();
+  });
   $('settings').onsubmit = async e => {
     e.preventDefault(); if (busy) return; busy = true;
     const body = { enabled: $('enabled').checked, enable_preflight: $('preflight').checked, enable_meme_save: $('meme-save').checked, meme_default_category: $('meme-category').value.trim(), allowed_umos: $('umos').value.split('\n').map(v => v.trim()).filter(Boolean), router_provider_id: $('provider').value.trim(), router_timeout_seconds: Number($('timeout').value) };
@@ -204,7 +220,7 @@
     finally { busy = false; button.disabled = false; render(); }
   };
   (async () => {
-    try { if (!window.AstrBotPluginPage) throw Error('请从 AstrBot → 插件 → 自然意图与插件整合 → 控制台打开'); await window.AstrBotPluginPage.ready(); await load(false, true); message('选择左侧插件查看指令；右上刷新会重新扫描并自动补充中文说明。'); }
+    try { if (!window.AstrBotPluginPage) throw Error('请从 AstrBot → 插件 → 自然意图适配器 → 控制台打开'); await window.AstrBotPluginPage.ready(); await load(false, true); message('选择左侧插件查看指令；右上刷新会重新扫描并自动补充中文说明。'); }
     catch (e) { message(e.message || '读取失败', true); $('list').append(node('div', '无法读取能力，请重新登录 AstrBot 后打开本页。', 'empty')); }
   })();
 })();

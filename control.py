@@ -103,11 +103,12 @@ class ControlPanel:
         try:
             offset = int(request.args.get('offset', '0'))
             query = request.args.get('query', '')
-            if offset < 0 or not isinstance(query, str) or len(query) > 200:
+            category = request.args.get('category', 'all')
+            if offset < 0 or not isinstance(query, str) or len(query) > 200 or category not in {'all', 'called', 'uncalled'}:
                 raise ValueError
         except (TypeError, ValueError):
             return jsonify({'error': '记录查询参数无效'}), 400
-        data = self.bridge.records_store.query(offset=offset, query=query)
+        data = self.bridge.records_store.query(offset=offset, query=query, category=category)
         if self.bridge._record_error and not data.get('storage_error'):
             data['storage_error'] = '部分记录未能保存到磁盘，请检查本机日志。'
         return jsonify(data)

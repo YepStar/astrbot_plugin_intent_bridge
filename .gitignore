@@ -10,3 +10,8 @@ local_config.json
 
 # AstrBot runtime data created during local execution or tests
 data/
+
+*.py[cod]
+plugin_data/
+private/
+*.db-*
