@@ -23,4 +23,6 @@
 - [Zlib知识库](https://github.com/YepStar/astrbot_plugin_zlib_knowledge)：找书、整理书架与知识库。
 - [网易云音乐](https://github.com/YepStar/astrbot_plugin_netease_browser)：找歌、分享歌曲和一起听。
 
+- [第三方平台](https://github.com/YepStar/astrbot_plugin_third_party_platforms)：统一安排 B站、小黑盒等平台的浏览、互动与分享。
+
 [详细使用说明与技术参考](docs/使用与技术参考.md)
