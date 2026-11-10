@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>自然意图适配器 · YepStar</title><link rel="stylesheet" href="style.css?v=0.6.2"><link rel="stylesheet" href="series.css?v=0.6.2"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>冷月系—自然意图分析 · YepStar</title><link rel="stylesheet" href="style.css?v=0.6.2"><link rel="stylesheet" href="series.css?v=0.6.2"></head>
 <body><div class="shell">
-<header><div><p class="adapter-series-brand">YEPSTAR · 适配器系列</p><h1>自然意图适配器</h1><p class="subtitle">发现当前能力，选择接入方式，让自然语言落到真实动作。</p></div><button id="refresh" class="primary">↻ 刷新插件与能力</button></header>
+<header><div><p class="adapter-series-brand">YEPSTAR · 冷月系</p><h1>冷月系—自然意图分析</h1><p class="subtitle">发现当前能力，选择接入方式，让自然语言落到真实动作。</p></div><button id="refresh" class="primary">↻ 刷新插件与能力</button></header>
 <div id="message" role="status" aria-live="polite">正在读取已加载插件…</div>
 <section class="metrics" aria-label="接入概览"><article><span>已加载插件</span><strong id="plugins-count">—</strong></article><article><span>可参与判断的工具</span><strong id="tools-count">—</strong></article><article><span>已接入的指令</span><strong id="commands-count">—</strong></article><article><span>最近刷新</span><strong class="small" id="updated">尚未刷新</strong></article></section>
 <nav class="workspace-tabs" aria-label="控制台页面"><button type="button" data-view="catalog" aria-pressed="true">插件与指令</button><button type="button" data-view="records" aria-pressed="false">调用记录</button></nav>
@@ -22,7 +22,7 @@
 <button class="primary full" type="submit">保存设置</button><p class="note">保存后立即用于后续消息。刷新不会自动执行指令，也不会启用已停用的插件。</p></form>
 <section class="example"><b>试试这样说</b><p>发来图片后说“把这个表情收藏起来”；也可以引用图片说“保存到开心分类”。</p><p>只有真实入库回执才算完成；图库的语义索引状态单独计算。</p></section></aside></main>
 <section id="records-view" class="card global-records" hidden aria-labelledby="records-heading"><div class="section-head"><div><h2 id="records-heading">有实际调用的记录</h2><p>默认只看实际发起过工具或指令调用的消息；未调用记录通过右侧按钮查看。</p></div></div><div class="filters"><input id="records-search" type="search" placeholder="搜索原话、指令、工具或记录编号…" aria-label="搜索调用记录"><button id="records-refresh" type="button" class="action">刷新记录</button><button id="records-open-idle" type="button" class="action" aria-haspopup="dialog" aria-controls="idle-records-dialog">未调用记录</button></div><p id="records-note" class="note"></p><div id="records-toolbar" class="records-toolbar"><span id="records-count" aria-live="polite"></span><div class="records-pagination"><button id="records-prev" type="button" class="action">上一页</button><button id="records-next" type="button" class="action">下一页</button></div></div><div id="records-list" class="list"></div></section>
-<footer>自然意图适配器 · 能力来自当前加载的插件 · 管理面板沿用 AstrBot 登录验证</footer></div>
+<footer>冷月系—自然意图分析 · 能力来自当前加载的插件 · 管理面板沿用 AstrBot 登录验证</footer></div>
 <dialog id="idle-records-dialog" class="records-dialog" aria-labelledby="idle-records-title"><div class="records-dialog-content">
 <div class="section-head records-dialog-head"><div><h2 id="idle-records-title">未调用记录</h2><p>普通聊天、未执行的计划和分析失败等记录。</p></div><button id="idle-records-close" type="button" class="action" autofocus>关闭</button></div>
 <div class="filters"><input id="idle-records-search" type="search" placeholder="搜索未调用记录…" aria-label="搜索未调用记录"><button id="idle-records-refresh" type="button" class="action">刷新记录</button></div>
