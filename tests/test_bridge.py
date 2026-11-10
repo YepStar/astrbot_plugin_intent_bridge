@@ -290,3 +290,28 @@ async def test_semantic_classifier_failure_preserves_legacy_policy(raw):
  c.llm_generate.return_value=NS(completion_text=raw)
  await b.route_speech(e,ProviderRequest())
  assert not hasattr(e,'_intent_bridge_voice_decision')
+
+
+@pytest.mark.asyncio
+async def test_third_party_replacement_research_respects_tool_scope_and_no_legacy_fallback():
+ from bridge_test_pkg import providers
+ replacement=NS(third_party_provider_api=1,third_party_replaces_legacy=True,
+   third_party_research=AsyncMock(return_value={'platform':'bilibili','status':'denied','items':[]}))
+ e=event();e.set_extra('_intent_bridge_available_tools',['third_party_research'])
+ with patch.object(providers,'plugin_for',AsyncMock(return_value=replacement)) as lookup:
+  result=await providers.bili_search(NS(),e,'public query',2)
+  assert result['status']=='denied' and lookup.await_count==1
+  replacement.third_party_research.assert_awaited_once_with(e,'bilibili','public query',limit=2,account=None)
+  e.set_extra('_intent_bridge_available_tools',[])
+  result=await providers.xhh_search(NS(),e,'public query',2,'profile')
+  assert result['status']=='unavailable' and replacement.third_party_research.await_count==1
+
+
+@pytest.mark.asyncio
+async def test_third_party_development_build_keeps_legacy_path():
+ from bridge_test_pkg import providers
+ e=event();plugin=NS(third_party_provider_api=1,third_party_replaces_legacy=False)
+ with patch.object(providers,'plugin_for',AsyncMock(side_effect=[plugin,None])) as lookup:
+  result=await providers.bili_search(NS(),e,'public query',2)
+  assert result['status']=='unavailable'
+  assert lookup.await_args_list[1].args[2]=='astrbot_plugin_bilibili_ai_bot'

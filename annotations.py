@@ -11,6 +11,7 @@ PLUGIN_NAMES = {
     'astrbot_plugin_private_companion':'私聊陪伴','astrbot_plugin_command_tools':'指令工具转换器',
     'astrbot_plugin_livingmemory':'私聊长期记忆','astrbot_plugin_self_learning':'群聊自学习',
     'astrbot_plugin_nomi_music':'网易云一起听','astrbot_plugin_netease_music':'网易云点歌',
+    'astrbot_plugin_third_party_platforms':'冷月系—第三方平台',
     'astrbot_plugin_bilibili_ai_bot':'B站互动与浏览','astrbot_plugin_xiaoheihe_adapter':'小黑盒接入',
     'astrbot_plugin_content_companion':'内容与创作','astrbot_plugin_image_companion':'图片生成扩展',
     'astrbot_plugin_reality_companion':'现实触及扩展','astrbot_plugin_link_resolver':'链接解析',
@@ -20,6 +21,8 @@ PLUGIN_NAMES = {
 
 # 中文名称用于展示。工具调用仍使用字典键中的原始英文标识。
 TOOL_NAMES = {
+    'third_party_schedule_list':'查看第三方平台日程','third_party_schedule_change':'调整第三方平台日程',
+    'third_party_research':'查询第三方公开内容','third_party_publish_dynamic':'发布B站文字动态',
     'ncm_search':'按想法搜索网易云歌曲','ncm_read':'浏览歌曲歌词与评论',
     'ncm_share':'网易云站内分享歌曲','ncm_invite':'QQ提议一起听（等待确认）',
     'ncm_reply_together':'确认或拒绝一起听提议','ncm_room_control':'切歌、暂停或继续一起听',

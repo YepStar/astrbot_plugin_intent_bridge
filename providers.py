@@ -22,7 +22,18 @@ def stamp(value):
         return ''
 
 
+async def third_party_source(context,event,platform,query,limit,profile_id=None):
+    plugin=await plugin_for(context,event,'astrbot_plugin_third_party_platforms')
+    if plugin is None or getattr(plugin,'third_party_provider_api',0)!=1 or not getattr(plugin,'third_party_replaces_legacy',False):
+        return None
+    if 'third_party_research' not in event.get_extra('_intent_bridge_available_tools',[]):
+        return {'platform':platform,'status':'unavailable','items':[]}
+    return await plugin.third_party_research(event,platform,query,limit=limit,account=profile_id)
+
+
 async def bili_search(context, event, query, limit):
+    replacement=await third_party_source(context,event,'bilibili',query,limit)
+    if replacement is not None:return replacement
     plugin = await plugin_for(context, event, 'astrbot_plugin_bilibili_ai_bot')
     if plugin is None or not plugin.config.get('ENABLE_LLM_TOOLS', True) or 'search_bilibili' not in event.get_extra('_intent_bridge_available_tools',[]):
         return {'platform':'bilibili','status':'unavailable','items':[]}
@@ -52,6 +63,8 @@ async def bili_search(context, event, query, limit):
 
 
 async def xhh_search(context, event, query, limit, profile_id):
+    replacement=await third_party_source(context,event,'xiaoheihe',query,limit,profile_id)
+    if replacement is not None:return replacement
     plugin = await plugin_for(context, event, 'astrbot_plugin_xiaoheihe_adapter')
     if plugin is None:
         return {'platform':'xiaoheihe','status':'unavailable','items':[]}
