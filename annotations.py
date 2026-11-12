@@ -22,6 +22,7 @@ PLUGIN_NAMES = {
 
 # 中文名称用于展示。工具调用仍使用字典键中的原始英文标识。
 TOOL_NAMES = {
+    'third_party_schedule_regenerate':'重排第三方平台今日剩余日程',
     'third_party_schedule_list':'查看第三方平台日程','third_party_schedule_change':'调整第三方平台日程',
     'third_party_research':'查询第三方公开内容','third_party_publish_dynamic':'发布B站文字动态',
     'ncm_search':'按想法搜索网易云歌曲','ncm_read':'浏览歌曲歌词与评论',
