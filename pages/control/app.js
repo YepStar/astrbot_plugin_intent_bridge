@@ -55,7 +55,7 @@
   const nativeRows = name => state.tools.filter(t => t.plugin === name && !t.command_key);
   function renderParents(q) {
     const hasCommands = plugin => commandRows(plugin.name).some(command => command.supported);
-    const parents = visiblePlugins().sort((a, b) => Number(b.active) - Number(a.active) || Number(hasCommands(b)) - Number(hasCommands(a)) || (a.title_zh || a.name).localeCompare(b.title_zh || b.name, 'zh-CN'));
+    const parents = visiblePlugins().sort((a, b) => window.IntentBridgePluginOrder.comparePlugins(a, b, hasCommands));
     const visible = parents.filter(p => matches(p, q) || [...commandRows(p.name), ...nativeRows(p.name)].some(r => matches(r, q)));
     if (!visible.some(p => p.name === selected)) selected = visible[0]?.name || '';
     $('installed-count').textContent = parents.length;
@@ -220,7 +220,7 @@
     finally { busy = false; button.disabled = false; render(); }
   };
   (async () => {
-    try { if (!window.AstrBotPluginPage) throw Error('请从 AstrBot → 插件 → 自然意图适配器 → 控制台打开'); await window.AstrBotPluginPage.ready(); await load(false, true); message('选择左侧插件查看指令；右上刷新会重新扫描并自动补充中文说明。'); }
+    try { if (!window.AstrBotPluginPage) throw Error('请从 AstrBot → 插件 → 冷月系—自然意图分析 → 控制台打开'); await window.AstrBotPluginPage.ready(); await load(false, true); message('选择左侧插件查看指令；右上刷新会重新扫描并自动补充中文说明。'); }
     catch (e) { message(e.message || '读取失败', true); $('list').append(node('div', '无法读取能力，请重新登录 AstrBot 后打开本页。', 'empty')); }
   })();
 })();

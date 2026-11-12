@@ -35,7 +35,7 @@ def installed_plugins(stars, root=None):
             continue
         plugins[star.name] = {
             "name": star.name,
-            "title_zh": plugin_title(star.name),
+            "title_zh": plugin_title(star.name, getattr(star, "display_name", "")),
             "version": str(star.version or ""),
             "active": bool(star.activated),
             "loaded": True,
@@ -75,7 +75,7 @@ def installed_plugins(stars, root=None):
         if name not in plugins:
             plugins[name] = {
                 "name": name,
-                "title_zh": plugin_title(name),
+                "title_zh": plugin_title(name, metadata.get("display_name", "")),
                 "version": str(metadata.get("version") or ""),
                 "active": False,
                 "loaded": False,
@@ -84,6 +84,9 @@ def installed_plugins(stars, root=None):
             }
             if plugins[name]["title_zh"] == name:
                 plugins[name]["title_zh"] = str(metadata.get("display_name") or name)
+        display_name = str(metadata.get("display_name") or "").strip()
+        if display_name.startswith("冷月系—"):
+            plugins[name]["title_zh"] = display_name
         # 未载入/停用插件也展示静态指令，但静态目录绝不作为可执行注册表。
         if not plugins[name]["active"]:
             commands.extend(source_commands(folder, name))

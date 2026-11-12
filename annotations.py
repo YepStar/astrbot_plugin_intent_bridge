@@ -2,16 +2,17 @@
 import re
 
 PLUGIN_NAMES = {
-    'astrbot_plugin_netease_browser':'网易云适配器',
+    'astrbot_plugin_netease_browser':'冷月系—网易云音乐',
     'builtin_commands':'系统内置指令','astrbot':'系统基础功能',
-    'astrbot_plugin_intent_bridge':'自然意图适配器',
-    'astrbot_plugin_zlib_knowledge':'书籍管理适配器',
-    'astrbot_plugin_memory_branches':'记忆分支适配器',
+    'astrbot_plugin_intent_bridge':'冷月系—自然意图分析',
+    'astrbot_plugin_zlib_knowledge':'冷月系—Zlib知识库',
+    'astrbot_plugin_memory_branches':'冷月系—并行记忆分支',
     'meme_manager':'表情包管理器','astrbot_plugin_meme_manager':'表情包管理器',
     'astrbot_plugin_private_companion':'私聊陪伴','astrbot_plugin_command_tools':'指令工具转换器',
     'astrbot_plugin_livingmemory':'私聊长期记忆','astrbot_plugin_self_learning':'群聊自学习',
     'astrbot_plugin_nomi_music':'网易云一起听','astrbot_plugin_netease_music':'网易云点歌',
     'astrbot_plugin_third_party_platforms':'冷月系—第三方平台',
+    'astrbot_plugin_misc_adapter':'冷月系—杂项/叠加层',
     'astrbot_plugin_bilibili_ai_bot':'B站互动与浏览','astrbot_plugin_xiaoheihe_adapter':'小黑盒接入',
     'astrbot_plugin_content_companion':'内容与创作','astrbot_plugin_image_companion':'图片生成扩展',
     'astrbot_plugin_reality_companion':'现实触及扩展','astrbot_plugin_link_resolver':'链接解析',
@@ -117,8 +118,12 @@ def has_chinese(text):
     return bool(re.search(r'[\u3400-\u9fff]',str(text or '')))
 
 
-def plugin_title(name):
-    return PLUGIN_NAMES.get(name,name)
+def plugin_title(name, display_name=''):
+    # Formal series names take precedence over older translated aliases.
+    display = str(display_name or '').strip()
+    if display.startswith('冷月系—'):
+        return display
+    return PLUGIN_NAMES.get(name, display or name)
 
 
 def command_annotation(plugin, command, description=''):

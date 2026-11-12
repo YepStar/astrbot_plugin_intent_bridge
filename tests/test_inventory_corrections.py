@@ -102,3 +102,20 @@ def test_preference_expiry_and_bounded_state(tmp_path):
     assert not store.excluded(e,'same request')
     store.remember(e,{'calls':[{'name':'search_memes'}]});store.previous[store.scope(e)]['at']=0
     assert store.last(e) is None
+
+
+def test_series_metadata_overrides_legacy_alias_for_loaded_and_unloaded_plugins(tmp_path):
+    folder=tmp_path/'astrbot_plugin_netease_browser';folder.mkdir()
+    (folder/'metadata.yaml').write_text('name: astrbot_plugin_netease_browser\ndisplay_name: 冷月系—网易云音乐新版\nversion: 1.4.8\n')
+    star=NS(name=folder.name,display_name='旧显示名',version='1.4.8',activated=True,root_dir_name=folder.name,desc='')
+    loaded,_=installed_plugins([star],tmp_path)
+    unloaded,_=installed_plugins([],tmp_path)
+    assert loaded[0]['title_zh']=='冷月系—网易云音乐新版'
+    assert unloaded[0]['title_zh']=='冷月系—网易云音乐新版'
+
+
+def test_known_series_aliases_are_canonical_even_without_display_metadata():
+    from bridge_test_pkg.annotations import plugin_title
+    for name in ['astrbot_plugin_netease_browser','astrbot_plugin_memory_branches','astrbot_plugin_zlib_knowledge','astrbot_plugin_intent_bridge','astrbot_plugin_misc_adapter','astrbot_plugin_third_party_platforms']:
+        assert plugin_title(name).startswith('冷月系—')
+    assert plugin_title('astrbot_plugin_private_companion')=='私聊陪伴'
